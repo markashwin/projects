@@ -1,107 +1,69 @@
-import abc
-from typing import Literal
+from typing import TYPE_CHECKING
 
-Environment = Literal["mac", "windows", "ubuntu", "browser"]
-Button = Literal["left", "right", "wheel", "back", "forward"]
-
-
-class Computer(abc.ABC):
-    """A computer implemented with sync operations. The Computer interface abstracts the
-    operations needed to control a computer or browser."""
-
-    @property
-    @abc.abstractmethod
-    def environment(self) -> Environment:
-        pass
-
-    @property
-    @abc.abstractmethod
-    def dimensions(self) -> tuple[int, int]:
-        pass
-
-    @abc.abstractmethod
-    def screenshot(self) -> str:
-        pass
-
-    @abc.abstractmethod
-    def click(self, x: int, y: int, button: Button) -> None:
-        pass
-
-    @abc.abstractmethod
-    def double_click(self, x: int, y: int) -> None:
-        pass
-
-    @abc.abstractmethod
-    def scroll(self, x: int, y: int, scroll_x: int, scroll_y: int) -> None:
-        pass
-
-    @abc.abstractmethod
-    def type(self, text: str) -> None:
-        pass
-
-    @abc.abstractmethod
-    def wait(self) -> None:
-        pass
-
-    @abc.abstractmethod
-    def move(self, x: int, y: int) -> None:
-        pass
-
-    @abc.abstractmethod
-    def keypress(self, keys: list[str]) -> None:
-        pass
-
-    @abc.abstractmethod
-    def drag(self, path: list[tuple[int, int]]) -> None:
-        pass
+if TYPE_CHECKING:
+    from .guardrail import InputGuardrailResult, OutputGuardrailResult
 
 
-class AsyncComputer(abc.ABC):
-    """A computer implemented with async operations. The Computer interface abstracts the
-    operations needed to control a computer or browser."""
+class AgentsException(Exception):
+    """Base class for all exceptions in the CAI Agents."""
 
-    @property
-    @abc.abstractmethod
-    def environment(self) -> Environment:
-        pass
 
-    @property
-    @abc.abstractmethod
-    def dimensions(self) -> tuple[int, int]:
-        pass
+class MaxTurnsExceeded(AgentsException):
+    """Exception raised when the maximum number of turns is exceeded."""
 
-    @abc.abstractmethod
-    async def screenshot(self) -> str:
-        pass
+    message: str
 
-    @abc.abstractmethod
-    async def click(self, x: int, y: int, button: Button) -> None:
-        pass
+    def __init__(self, message: str):
+        self.message = message
 
-    @abc.abstractmethod
-    async def double_click(self, x: int, y: int) -> None:
-        pass
 
-    @abc.abstractmethod
-    async def scroll(self, x: int, y: int, scroll_x: int, scroll_y: int) -> None:
-        pass
+class ModelBehaviorError(AgentsException):
+    """Exception raised when the model does something unexpected, e.g. calling a tool that doesn't
+    exist, or providing malformed JSON.
+    """
 
-    @abc.abstractmethod
-    async def type(self, text: str) -> None:
-        pass
+    message: str
 
-    @abc.abstractmethod
-    async def wait(self) -> None:
-        pass
+    def __init__(self, message: str):
+        self.message = message
 
-    @abc.abstractmethod
-    async def move(self, x: int, y: int) -> None:
-        pass
 
-    @abc.abstractmethod
-    async def keypress(self, keys: list[str]) -> None:
-        pass
+class UserError(AgentsException):
+    """Exception raised when the user makes an error using CAI."""
 
-    @abc.abstractmethod
-    async def drag(self, path: list[tuple[int, int]]) -> None:
-        pass
+    message: str
+
+    def __init__(self, message: str):
+        self.message = message
+
+
+class InputGuardrailTripwireTriggered(AgentsException):
+    """Exception raised when a guardrail tripwire is triggered."""
+
+    guardrail_result: "InputGuardrailResult"
+    """The result data of the guardrail that was triggered."""
+
+    def __init__(self, guardrail_result: "InputGuardrailResult"):
+        self.guardrail_result = guardrail_result
+        super().__init__(
+            f"Guardrail {guardrail_result.guardrail.__class__.__name__} triggered tripwire"
+        )
+
+
+class OutputGuardrailTripwireTriggered(AgentsException):
+    """Exception raised when a guardrail tripwire is triggered."""
+
+    guardrail_result: "OutputGuardrailResult"
+    """The result data of the guardrail that was triggered."""
+
+    def __init__(self, guardrail_result: "OutputGuardrailResult"):
+        self.guardrail_result = guardrail_result
+        super().__init__(
+            f"Guardrail {guardrail_result.guardrail.__class__.__name__} triggered tripwire"
+        )
+
+
+class PriceLimitExceeded(AgentsException):
+    """Raised when the maximum price limit is exceeded."""
+    def __init__(self, current_cost: float, price_limit: float):
+        super().__init__(f"Maximum price limit (${price_limit:.4f}) exceeded. Current cost: ${current_cost:.4f}")
